@@ -1,84 +1,118 @@
 
+from pathlib import Path
+import tomllib
+
 import pandas as pd
-from getpass import getpass
-from sqlalchemy import create_engine, URL, text
+from sqlalchemy import create_engine, text
 
-# 1. Read cleaned dataset
-file_path = "data/processed/cleaned_online_retail.csv"
 
-df = pd.read_csv(
-    file_path,
-    dtype={
-        "InvoiceNo": str,
-        "StockCode": str
-    },
-    low_memory=False
-)
+# Project folders
+BASE_DIR = Path(__file__).resolve().parents[1]
 
-# 2. Rename columns for SQL
-df.columns = [
-    "invoice_no",
-    "stock_code",
-    "description",
-    "quantity",
-    "invoice_date",
-    "unit_price",
-    "customer_id",
-    "country",
-    "revenue",
-    "year",
-    "month",
-    "month_name",
-    "day",
-    "hour",
-    "day_name"
-]
+DATA_FILE = BASE_DIR / "data" / "processed" / "cleaned_online_retail.csv"
+SECRETS_FILE = BASE_DIR / ".streamlit" / "secrets.toml"
 
-# 3. Convert data types
-df["invoice_date"] = pd.to_datetime(df["invoice_date"])
 
-print("Dataset loaded:", df.shape)
+def main():
+    # Check required files
+    if not DATA_FILE.exists():
+        print("Error: Cleaned dataset not found.")
+        print(DATA_FILE)
+        return
 
-# 4. Get PostgreSQL password securely
-password = getpass("Enter PostgreSQL password: ")
+    if not SECRETS_FILE.exists():
+        print("Error: secrets.toml not found.")
+        return
 
-# 5. Create database connection
-connection_url = URL.create(
-    drivername="postgresql+psycopg",
-    username="postgres",
-    password=password,
-    host="localhost",
-    port=5432,
-    database="ecommerce_db"
-)
+    # Read Neon connection string securely
+    with open(SECRETS_FILE, "rb") as file:
+        secrets = tomllib.load(file)
 
-engine = create_engine(connection_url)
+    database_url = secrets["postgres"]["url"].strip()
 
-# 6. Upload data to PostgreSQL
-print("\nUploading data to PostgreSQL...")
+    # Use psycopg 3 driver
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace(
+            "postgresql://",
+            "postgresql+psycopg://",
+            1
+        )
 
-df.to_sql(
-    name="online_retail",
-    con=engine,
-    if_exists="replace",
-    index=False,
-    chunksize=10000
-)
-
-# 7. Verify imported data
-with engine.connect() as connection:
-    result = connection.execute(
-        text("SELECT COUNT(*) FROM online_retail")
+    # Connect to Neon
+    engine = create_engine(
+        database_url,
+        pool_pre_ping=True
     )
-    row_count = result.scalar()
 
-print("\n========== DATABASE IMPORT SUMMARY ==========")
-print("Expected rows:", len(df))
-print("Imported rows:", row_count)
+    try:
+        print("Reading cleaned dataset...")
 
-if row_count == len(df):
-    print("SUCCESS: All records imported!")
-else:
-    print("WARNING: Imported row count does not match.")
+        df = pd.read_csv(
+            DATA_FILE,
+            dtype={"InvoiceNo": str},
+            low_memory=False
+        )
 
-engine.dispose()
+        
+# Rename columns to match the dashboard SQL queries
+        df.rename(columns={
+            "InvoiceNo": "invoice_no",
+            "StockCode": "stock_code",
+            "Description": "description",
+            "Quantity": "quantity",
+            "InvoiceDate": "invoice_date",
+            "UnitPrice": "unit_price",
+            "CustomerID": "customer_id",
+            "Country": "country",
+            "Revenue": "revenue",
+            "Year": "year",
+            "Month": "month",
+            "MonthName": "month_name",
+            "Day": "day",
+            "Hour": "hour",
+            "DayName": "day_name"
+        }, inplace=True)
+
+
+        print("Dataset loaded successfully.")
+        print("Rows:", len(df))
+        print("Columns:", len(df.columns))
+
+        print("\nUploading data to Neon PostgreSQL...")
+        
+        df.to_sql(
+            "online_retail",
+            engine,
+            if_exists="replace",
+            index=False,
+            chunksize=5000
+        )
+
+        print("Upload completed!")
+
+        # Verify uploaded records
+        with engine.connect() as connection:
+            result = connection.execute(
+                text("SELECT COUNT(*) FROM online_retail")
+            )
+            total_rows = result.scalar()
+
+        print("\nCloud database verification")
+        print("---------------------------")
+        print("Uploaded rows:", total_rows)
+
+        if total_rows == len(df):
+            print("SUCCESS: All records uploaded correctly!")
+        else:
+            print("WARNING: Uploaded row count does not match.")
+
+    except Exception as error:
+        print("\nDatabase upload failed.")
+        print("Error:", error)
+
+    finally:
+        engine.dispose()
+
+
+if __name__ == "__main__":
+    main()

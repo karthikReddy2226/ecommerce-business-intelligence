@@ -28,20 +28,25 @@ st.markdown(
 # 2. DATABASE CONNECTION
 # ==========================================
 
+
 @st.cache_resource
 def get_engine():
-    config = st.secrets["postgres"]
+    database_url = st.secrets["postgres"]["url"].strip()
 
-    connection_url = URL.create(
-        drivername="postgresql+psycopg",
-        username=config["user"],
-        password=config["password"],
-        host=config["host"],
-        port=int(config["port"]),
-        database=config["database"]
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace(
+            "postgresql://",
+            "postgresql+psycopg://",
+            1
+        )
+
+    engine = create_engine(
+        database_url,
+        pool_pre_ping=True
     )
 
-    return create_engine(connection_url)
+    return engine
+
 
 
 # ==========================================
