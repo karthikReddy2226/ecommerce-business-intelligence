@@ -9,6 +9,23 @@ This project analyzes an online retail dataset containing more than 500,000 tran
 
 It covers data cleaning, exploratory data analysis, SQL-based business analysis and an interactive dashboard to understand revenue trends, product performance, customer behavior and country-wise sales.
 
+
+## 🚀 Live Dashboard
+
+**Explore the interactive E-Commerce Business Intelligence Dashboard:**
+
+[Open Live Dashboard](https://ecommerce-business-intelligence-192624.streamlit.app/)
+
+The dashboard provides:
+- Overall sales and revenue KPIs
+- Monthly revenue trends
+- Country-wise sales analysis
+- Top-performing products
+- Customer purchase analysis
+- Interactive filters and visualizations
+
+**Cloud Infrastructure:** Neon PostgreSQL + Streamlit Community Cloud.
+
 ## Dashboard Preview
 
 ![Dashboard Overview](dashboard/screenshots/dashboard_overview.png)
@@ -191,8 +208,6 @@ See `sql/phase4_business_analysis.sql`.
 
 ## Future Improvements
 
-- Cloud database integration
-- Public dashboard deployment
 - Customer segmentation using RFM analysis
 - Sales forecasting
 - Product recommendation analysis
