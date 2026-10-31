@@ -1,0 +1,29 @@
+
+# Python environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Credentials
+.env
+.env.local
+.streamlit/secrets.toml
+
+# Dataset files - never upload
+/data/raw/**
+/data/processed/*.csv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated reports
+/reports/figures/*.html
+/reports/summaries/*.csv
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
